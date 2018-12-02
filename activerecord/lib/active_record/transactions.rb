@@ -387,6 +387,7 @@ module ActiveRecord
           new_record: @new_record,
           destroyed: @destroyed,
           frozen?: frozen?,
+          previously_changed: changes
         )
         @_start_transaction_state[:level] = (@_start_transaction_state[:level] || 0) + 1
         remember_new_record_before_last_commit
@@ -415,15 +416,31 @@ module ActiveRecord
       def restore_transaction_record_state(force = false)
         unless @_start_transaction_state.empty?
           transaction_level = (@_start_transaction_state[:level] || 0) - 1
+
           if transaction_level < 1 || force
             restore_state = @_start_transaction_state
             thaw
             @new_record = restore_state[:new_record]
             @destroyed  = restore_state[:destroyed]
+
+            # Restore ActiveRecord::Dirty instance variables to the state before #changes_applied
+            if defined?(@mutations_before_last_save) && @mutations_before_last_save
+              @mutations_before_last_save.changed_attribute_names.each do |attribute|
+                @attributes.reset(attribute)
+              end
+
+              restore_state[:previously_changed].each do |attribute, values|
+                @attributes.write_from_user(attribute, values.last)
+              end
+
+              @mutations_before_last_save = nil
+            end
+
             pk = self.class.primary_key
             if pk && _read_attribute(pk) != restore_state[:id]
               _write_attribute(pk, restore_state[:id])
             end
+
             freeze if restore_state[:frozen?]
           end
         end

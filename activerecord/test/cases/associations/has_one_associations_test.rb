@@ -533,8 +533,8 @@ class HasOneAssociationsTest < ActiveRecord::TestCase
 
     assert_equal "Failed to save the new associated ship.", error.message
     assert_equal ships(:black_pearl), pirate.ship
-    assert_equal pirate.id, pirate.ship.pirate_id
     assert_equal pirate.id, ships(:black_pearl).reload.pirate_id
+    assert_nil pirate.ship.pirate_id
     assert_nil new_ship.pirate_id
   end
 
