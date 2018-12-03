@@ -818,6 +818,56 @@ class TransactionTest < ActiveRecord::TestCase
     assert topic.persisted?, "persisted"
   end
 
+  def test_rollback_of_changed_attributes
+    topic = Topic.new
+    topic.title = "New Topic"
+    changes_before_rollback = topic.changes
+
+    Topic.transaction do
+      topic.save!
+      raise ActiveRecord::Rollback
+    end
+
+    changes = topic.changes.to_a
+
+    changes_before_rollback.to_a.each do |value|
+      assert_includes(changes, value)
+    end
+  end
+
+  def test_rollback_of_changed_attributes_for_persisted_record
+    topic = Topic.create
+    topic.title = "New Topic"
+
+    Topic.transaction do
+      topic.save!
+      raise ActiveRecord::Rollback
+    end
+
+    topic.save!
+
+    assert_equal(topic.title, "New Topic")
+  end
+
+  def test_rollback_of_changed_attributes_for_persisted_record_without_partial_writes
+    old = Topic.partial_writes?
+    Topic.partial_writes = false
+
+    topic = Topic.create
+    topic.title = "New Topic"
+
+    Topic.transaction do
+      topic.save!
+      raise ActiveRecord::Rollback
+    end
+
+    topic.save!
+
+    assert_equal(topic.title, "New Topic")
+  ensure
+    Topic.partial_writes = old
+  end
+
   def test_sqlite_add_column_in_transaction
     return true unless current_adapter?(:SQLite3Adapter)
 

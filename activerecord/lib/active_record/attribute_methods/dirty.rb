@@ -157,6 +157,10 @@ module ActiveRecord
         mutations_from_database.changed_values
       end
 
+      def mutations_from_database
+        @mutations_from_database || super.tap { sync_with_transaction_state }
+      end
+
       private
         def write_attribute_without_type_cast(attr_name, value)
           name = attr_name.to_s

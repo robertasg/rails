@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'byebug'
+
 module ActiveRecord
   # See ActiveRecord::Transactions::ClassMethods for documentation.
   module Transactions
@@ -334,6 +336,7 @@ module ActiveRecord
       end
     ensure
       @_committed_already_called = false
+      forget_attribute_assignments
       force_clear_transaction_record_state
     end
 
@@ -420,6 +423,8 @@ module ActiveRecord
             thaw
             @new_record = restore_state[:new_record]
             @destroyed  = restore_state[:destroyed]
+
+            clear_timestamp_attributes
             pk = self.class.primary_key
             if pk && _read_attribute(pk) != restore_state[:id]
               _write_attribute(pk, restore_state[:id])
